@@ -1,10 +1,12 @@
+use crate::csv_processing::draw_random;
 use gdal;
-use unmix::unmix;
+use rayon::prelude::*;
+use rayon::vec;
+use rayon::ThreadPoolBuilder;
 use std::fs::File;
 use std::path::PathBuf;
 use structopt::StructOpt;
-
-use crate::csv_processing::draw_random;
+use unmix::{unmix, unmix_raster};
 mod csv_processing;
 mod unmix;
 
@@ -30,6 +32,13 @@ fn main() {
 
     let band_count = raster_dataset.raster_count();
 
+
+    rayon::ThreadPoolBuilder::new()
+    .num_threads(6)
+    .build_global()
+    .unwrap();
+
+
     let mut raster_bands = vec![];
     for band_number in 1..band_count + 1 {
         let rasterband = raster_dataset
@@ -49,16 +58,39 @@ fn main() {
 
         raster_bands.push(rast_vals)
     }
-    let mut a = 
-    csv_processing::Dataframe::new(input_csv, true, ",".as_bytes()[0])
-        .split_by(0);
+
+    let nbands = raster_bands.len();
+    let ncols = raster_bands[0].len();
+
+    let rast: Vec<Vec<f64>> = transpose(raster_bands);
+
+
+    let mut a = csv_processing::Dataframe::new(input_csv, true, ",".as_bytes()[0]).split_by(0);
 
     let b = draw_random(&mut a);
     let c = [146.21552, 142.08421, 80.00875].to_vec();
-    let d:Vec<Vec<f64>> = vec![
+    let d: Vec<Vec<f64>> = vec![
         vec![212.6503, 10.482534, 136.97844],
         vec![267.92877, 32.882927, 108.81945],
-        vec![181.8901, -5.3892436, 41.599026]];
-    let res = unmix(c, d);
-    println!("{:?}",res);
+        vec![181.8901, -5.3892436, 41.599026],
+    ];
+
+    let res = unmix(&c, d.clone());
+    println!("Single Result:{:?}", res);
+
+
+    let res = unmix_raster(&rast, d);
 }
+
+fn transpose(vec:Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+    let ncols = vec[0].len();
+    (0..ncols)
+        .into_par_iter()
+        .map(|i| {
+            vec
+                .iter()
+                .map(|inner| inner[i].clone())
+                .collect::<Vec<f64>>()
+        })
+        .collect()
+    }
