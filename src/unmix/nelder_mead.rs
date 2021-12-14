@@ -1,11 +1,8 @@
-use std::result;
-
 #[derive(Clone, Debug)]
-pub struct nm_result {
+pub struct NMResult {
     pub x: Vec<f64>,
     pub score: f64,
 }
-
 pub fn nelder_mead(
     f: &dyn Fn(&Vec<f64>) -> f64,
     x_start: &mut Vec<f64>,
@@ -17,12 +14,12 @@ pub fn nelder_mead(
     gamma: f64,
     rho: f64,
     sigma: f64,
-) -> nm_result {
+) -> NMResult {
     let dim = x_start.len();
     let mut prev_best = f(&x_start);
     let mut no_improv = 0;
 
-    let mut res = vec![nm_result {
+    let mut res = vec![NMResult {
         x: x_start.clone(),
         score: prev_best,
     }];
@@ -31,7 +28,7 @@ pub fn nelder_mead(
         let mut x = x_start.clone();
         x[i] += step;
         let score = f(&x);
-        res.push(nm_result {
+        res.push(NMResult {
             x: x.clone(),
             score: score,
         });
@@ -74,7 +71,7 @@ pub fn nelder_mead(
         if res[0].score <= rscore {
             if rscore < res[res.len() - 2].score {
                 res.remove(res.len() - 1);
-                res.push(nm_result {
+                res.push(NMResult {
                     x: xr.clone(),
                     score: rscore,
                 });
@@ -88,14 +85,14 @@ pub fn nelder_mead(
             let escore = f(&xe);
             if escore < rscore {
                 res.remove(res.len() - 1);
-                res.push(nm_result {
+                res.push(NMResult {
                     x: xe.clone(),
                     score: escore,
                 });
                 continue;
             } else {
                 res.remove(res.len() - 1);
-                res.push(nm_result {
+                res.push(NMResult {
                     x: xr.clone(),
                     score: rscore,
                 });
@@ -108,7 +105,7 @@ pub fn nelder_mead(
         let cscore = f(&xc);
         if cscore < res[res.len() - 1].score {
             res.remove(res.len() - 1);
-            res.push(nm_result {
+            res.push(NMResult {
                 x: xc,
                 score: cscore,
             });
@@ -121,7 +118,7 @@ pub fn nelder_mead(
         for r in res.iter() {
             let redx = add(&x1, &times(sigma, &substract(&r.x, &x1)));
             let score = f(&redx);
-            nres.push(nm_result {
+            nres.push(NMResult {
                 x: redx,
                 score: score,
             })

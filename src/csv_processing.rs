@@ -2,7 +2,7 @@ use csv;
 use std::path::Path;
 use rand::Rng;
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct Dataframe {
     pub shape: (usize, usize),
     pub header: Option<Vec<String>>,
