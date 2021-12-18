@@ -12,3 +12,4 @@ structopt = "0.3.25"
 rand = "0.8.4"
 indicatif = {version = "*", features = ["rayon"]}
 rayon = "1.5.1"
+nalgebra = "0.29.0"

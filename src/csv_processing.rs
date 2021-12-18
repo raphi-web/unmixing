@@ -1,17 +1,17 @@
 use csv;
-use std::path::Path;
 use rand::Rng;
+use std::path::Path;
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct Dataframe {
     pub shape: (usize, usize),
     pub header: Option<Vec<String>>,
-    pub values: Vec<Vec<String>>,
+    pub values: Vec<Vec<f64>>,
 }
 
 impl Dataframe {
     pub fn new(filepath: &Path, header: bool, deliminator: u8) -> Self {
-        let mut record_vec: Vec<Vec<String>> = Vec::new();
+        let mut record_vec: Vec<Vec<f64>> = Vec::new();
 
         let mut rdr = csv::ReaderBuilder::new()
             .has_headers(header)
@@ -31,7 +31,7 @@ impl Dataframe {
         };
 
         for result in rdr.deserialize().into_iter() {
-            let record: Vec<String> = result.unwrap();
+            let record: Vec<f64> = result.unwrap();
             record_vec.push(record);
         }
         let csv_shape = (record_vec.len(), record_vec[0].len());
@@ -43,22 +43,22 @@ impl Dataframe {
         }
     }
 
-    pub fn column(&self, n: usize) -> Vec<String> {
-        let mut col_values: Vec<String> = vec![];
+    pub fn column(&self, n: usize) -> Vec<f64> {
+        let mut col_values: Vec<f64> = vec![];
         for row in self.values.iter() {
             col_values.push(row[n].clone());
         }
         col_values
     }
 
-    pub fn unique(&self, index: usize, axis: usize) -> Vec<String> {
-        let vector: Vec<String> = if axis == 0 {
+    pub fn unique(&self, index: usize, axis: usize) -> Vec<f64> {
+        let vector: Vec<f64> = if axis == 0 {
             self.values[index].clone()
         } else {
             self.column(index)
         };
 
-        let mut unique_values: Vec<String> = Vec::new();
+        let mut unique_values: Vec<f64> = Vec::new();
         for val in vector.iter() {
             let mut is_unique = true;
             for uval in unique_values.iter() {
@@ -77,13 +77,12 @@ impl Dataframe {
         let unique_values = self.unique(col_idx, 1);
         let mut splitted: Vec<Dataframe> = Vec::new();
         for uval in unique_values.iter() {
-            let mut val_vec: Vec<Vec<String>> = vec![];
+            let mut val_vec: Vec<Vec<f64>> = vec![];
             for row in self.values.iter() {
                 if row[col_idx] == *uval {
-                        let mut  r = row.clone();
-                        r.remove(col_idx);
-                        val_vec.push(r);
-                    
+                    let mut r = row.clone();
+                    r.remove(col_idx);
+                    val_vec.push(r);
                 }
             }
             let df = Dataframe {
@@ -96,16 +95,22 @@ impl Dataframe {
         splitted
     }
 }
-
-pub fn draw_random(signatures:  &mut Vec<Dataframe>) ->Vec<Vec<String>>{     
+pub fn draw_random(signatures: &mut Vec<Dataframe>) -> Vec<Vec<f64>> {
     let mut sigs = vec![];
-    
+
     for df in signatures.iter_mut() {
         let shape = df.shape;
-        let rand_num:usize = rand::thread_rng().gen_range(0..shape.0);
+        let rand_num: usize = rand::thread_rng().gen_range(0..shape.0);
 
         let sig = df.values.remove(rand_num);
         sigs.push(sig);
     }
     sigs
+}
+
+pub fn sig_samples(df: Dataframe, class_id: usize) -> Vec<Vec<Vec<f64>>> {
+    let mut by_class = df.split_by(class_id);
+    let minimum = by_class.iter().map(|cdf| cdf.values.len()).min().unwrap();
+
+    (0..minimum).map(|_| draw_random(&mut by_class)).collect()
 }

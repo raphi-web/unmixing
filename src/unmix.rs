@@ -1,88 +1,58 @@
-mod nelder_mead;
+use crate::csv_processing::{sig_samples, Dataframe};
+use rayon::{prelude::*};
+extern crate nalgebra as na;
 use indicatif::ParallelProgressIterator;
-use rayon::prelude::*;
+use na::{DMatrix, DVector};
 
-use crate::csv_processing::{draw_random, Dataframe};
-pub fn unmix(pixel: &Vec<f64>, signatures: Vec<Vec<f64>>) -> Vec<f64> {
-    let function = |x: &Vec<f64>| {
-        let mut result: Vec<f64> = vec![];
-        for line in signatures.iter() {
-            let mut y = 0.;
-            for i in 0..line.len() {
-                // if x[i] smaller 0 make it lgr 0
-                // to avoid negative y (results)
-                y += line[i] * {
-                    if x[i] < 0. {
-                        x[i] * -1.
-                    } else {
-                        x[i]
-                    }
-                };
-            }
-            result.push(y)
-        }
+pub fn unmix(pixel: &Vec<f64>, signature: &Vec<Vec<f64>>) -> Vec<f64> {
 
-        let mut z: Vec<f64> = vec![];
-        for i in 0..x.len() {
-            z.push((pixel[i] - result[i]) * (pixel[i] - result[i]))
-        }
+ 
+    let nsigs = signature.len();
+    let nbnds = signature[0].len();
 
-        let z: f64 = z.iter().sum();
-        z
-    };
+    let pixel = DVector::from_vec(pixel.clone());
+    let sig = DMatrix::from_vec(nsigs,nbnds,ravel(signature));
+    let sig = sig.transpose();
 
-    let mut start = vec![0.5, 0.5, 0.5];
-    let res = nelder_mead::nelder_mead(
-        &function, &mut start, 0.1, 0.0005, 10, 100, 1., 2., -0.5, 0.5,
-    );
-    res.x
-}
-pub fn unmix_raster(rast: &Vec<Vec<f64>>, signatures: Vec<Vec<f64>>) -> Vec<Vec<f64>> {
-    let ncols = rast[0].len();
-    let mut unmixed_raster: Vec<Vec<f64>> = Vec::new();
+    //let least_square = sig.lu().solve(&pixel).expect("Linear resolution failed.");;
+    
+    
+    let ls = sig.transpose() * &sig;
 
-    let result: Vec<Vec<f64>> = rast
+    let ls = ls.try_inverse().unwrap();
+    let ls = ls * &sig.transpose();
+    let res = ls * pixel;
+    
+    let umixed_vec:Vec<f64> = res.as_slice().to_vec();
+
+    return umixed_vec;
+
+
+
+}  
+
+pub fn unmix_all(raster: Vec<Vec<f64>>, signatures: Dataframe) -> Vec<Vec<f64>> {
+    let signature_samples = sig_samples(signatures, 0);
+    let raster: Vec<Vec<f64>> = transpose(raster);
+
+    let unmixed = raster
         .par_iter()
         .progress()
-        .map(|pxl| unmix(pxl, signatures.clone()))
-        .collect();
-    result
-}
-
-pub fn unmix_all(rast: &Vec<Vec<f64>>, signatures: &mut Vec<Dataframe>) -> Vec<Vec<f64>> {
-    let minimum = signatures.iter().map(|s| s.values.len()).min().unwrap();
-
-    // draw signatures the from csv dataframe and convert them to float
-    let sig_samples: Vec<Vec<Vec<f64>>> = (0..minimum)
-        .map(|_| {
-            let sig = draw_random(signatures);
-            sig.into_iter()
-                .map(|line| {
-                    line.into_iter()
-                        .map(|v| v.parse::<f64>().unwrap())
-                        .collect()
-                })
-                .collect()
-        })
-        .collect();
-
-    // unmix the raster with all the drawn signatures, average the results
-    rast.into_par_iter()
-        .map(|pxl| {
-           
-            let mut umix_results: Vec<Vec<f64>> = sig_samples
+        .map(|pixel| {
+            let unmixed_pixel_results: Vec<Vec<f64>> = signature_samples
                 .iter()
-                .map(|sig| unmix(pxl, sig.clone()))
+                .map(|sig| unmix(pixel, sig))
                 .collect();
 
-            let n_unmixed: f64 = umix_results.len() as f64;
-
-            sum_columnwise(umix_results)
-                .into_iter()
-                .map(|px| px / n_unmixed)
+            let n_samples = unmixed_pixel_results.len() as f64;
+            sum_columnwise(unmixed_pixel_results)
+                .iter()
+                .map(|sum| sum / n_samples)
                 .collect()
         })
-        .collect()
+        .collect();
+
+        transpose(unmixed)
 }
 
 fn sum_columnwise(vec: Vec<Vec<f64>>) -> Vec<f64> {
@@ -94,4 +64,28 @@ fn sum_columnwise(vec: Vec<Vec<f64>>) -> Vec<f64> {
         }
     }
     res
+}
+pub fn transpose(vec: Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+    let ncols = vec[0].len();
+    (0..ncols)
+        .into_par_iter()
+        .map(|i| {
+            vec.iter()
+                .map(|inner| inner[i].clone())
+                .collect::<Vec<f64>>()
+        })
+        .collect()
+}
+
+pub fn ravel(vector:&Vec<Vec<f64>>) -> Vec<f64> {
+    let mut result:Vec<f64> = vec![];
+    let vector = vector.clone();
+    for i in vector.into_iter() {
+        for j in i.into_iter() {
+            result.push(
+                j
+            );
+        }
+    }
+    result
 }

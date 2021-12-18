@@ -15,6 +15,7 @@ pub fn nelder_mead(
     rho: f64,
     sigma: f64,
 ) -> NMResult {
+  
     let dim = x_start.len();
     let mut prev_best = f(&x_start);
     let mut no_improv = 0;
