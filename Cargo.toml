@@ -13,5 +13,10 @@ rand = "0.8.4"
 indicatif = {version = "*", features = ["rayon"]}
 rayon = "1.5.1"
 nalgebra = "0.29.0"
-argmin = { version = "0.4.7", features = ["nalgebral"] }
-finitediff = "0.1.4"
+pos_pso = "0.1.6"
+
+[profile.dev]
+opt-level = 3
+
+[profile.release]
+opt-level = 3

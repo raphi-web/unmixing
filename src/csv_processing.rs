@@ -1,5 +1,4 @@
 use csv;
-use rand::Rng;
 use std::path::Path;
 
 #[derive(Debug, Clone)]
@@ -95,14 +94,12 @@ impl Dataframe {
         splitted
     }
 }
-pub fn draw_random(signatures: &mut Vec<Dataframe>) -> Vec<Vec<f64>> {
+pub fn draw_first(signatures: &mut Vec<Dataframe>) -> Vec<Vec<f64>> {
+    
     let mut sigs = vec![];
-
     for df in signatures.iter_mut() {
-        let shape = df.shape;
-        let rand_num: usize = rand::thread_rng().gen_range(0..shape.0);
-
-        let sig = df.values.remove(rand_num);
+      
+        let sig = df.values.remove(0);
         sigs.push(sig);
     }
     sigs
@@ -112,5 +109,5 @@ pub fn sig_samples(df: Dataframe, class_id: usize) -> Vec<Vec<Vec<f64>>> {
     let mut by_class = df.split_by(class_id);
     let minimum = by_class.iter().map(|cdf| cdf.values.len()).min().unwrap();
 
-    (0..minimum).map(|_| draw_random(&mut by_class)).collect()
+    (0..minimum).map(|_| draw_first(&mut by_class)).collect()
 }

@@ -21,8 +21,6 @@ pub fn read_raster(fname: PathBuf) -> (Vec<Vec<f64>>, Profile) {
     let mut cols: usize = 0;
     let mut rows: usize = 0;
 
-
-
     for band_number in 1..band_count + 1 {
         let rasterband = raster_dataset
             .rasterband(band_number)
